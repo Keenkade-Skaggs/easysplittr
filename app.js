@@ -191,10 +191,12 @@ function showAuthSuccess(message) {
 }
 
 let isForgotPasswordMode = false;
+let isPasswordResetMode = false;
 
 function setAuthMode(signUp) {
     isSignUpMode = signUp;
     isForgotPasswordMode = false;
+    isPasswordResetMode = false;
     const authModalTitle = document.getElementById('authModalTitle');
     const authModalSubtitle = document.getElementById('authModalSubtitle');
     const btnText = confirmAuthBtn.querySelector('span');
@@ -244,6 +246,68 @@ function setForgotPasswordMode() {
 
     authError.classList.remove('show');
     authSuccess.classList.remove('show');
+}
+
+function setPasswordResetMode() {
+    isPasswordResetMode = true;
+    isForgotPasswordMode = false;
+    isSignUpMode = false;
+    const authModalTitle = document.getElementById('authModalTitle');
+    const authModalSubtitle = document.getElementById('authModalSubtitle');
+    const btnText = confirmAuthBtn.querySelector('span');
+    const passwordGroup = document.getElementById('passwordGroup');
+    const authTabs = document.querySelector('.auth-tabs');
+    const forgotLink = document.getElementById('forgotPasswordLink');
+
+    // Show password field, hide tabs and forgot link
+    if (passwordGroup) passwordGroup.style.display = 'block';
+    if (authTabs) authTabs.style.display = 'none';
+    if (forgotLink) forgotLink.style.display = 'none';
+
+    // Update password label to "New Password"
+    const passwordLabel = passwordGroup?.querySelector('label');
+    if (passwordLabel) passwordLabel.textContent = 'New Password';
+    if (authPassword) authPassword.placeholder = 'Enter your new password';
+
+    if (authModalTitle) authModalTitle.textContent = 'Set New Password';
+    if (authModalSubtitle) authModalSubtitle.textContent = 'Enter your new password below';
+    if (btnText) btnText.textContent = 'Update Password';
+
+    // Clear email field and hide it since user is already authenticated
+    const emailGroup = document.querySelector('.auth-input-group');
+    if (emailGroup) emailGroup.style.display = 'none';
+
+    authError.classList.remove('show');
+    authSuccess.classList.remove('show');
+}
+
+async function updatePassword(newPassword) {
+    try {
+        const { error } = await supabaseClient.auth.updateUser({
+            password: newPassword
+        });
+
+        if (error) throw error;
+
+        showAuthSuccess('Password updated successfully! You can now sign in.');
+
+        // Reset to normal mode and close modal after 2 seconds
+        setTimeout(() => {
+            hideAuthModal();
+            // Reset the password label back to normal
+            const passwordGroup = document.getElementById('passwordGroup');
+            const passwordLabel = passwordGroup?.querySelector('label');
+            if (passwordLabel) passwordLabel.textContent = 'Password';
+            if (authPassword) authPassword.placeholder = 'Enter your password';
+            // Show email group again
+            const emailGroup = document.querySelector('.auth-input-group');
+            if (emailGroup) emailGroup.style.display = 'block';
+            setAuthMode(false);
+        }, 2000);
+
+    } catch (error) {
+        showAuthError(error.message);
+    }
 }
 
 async function resetPassword(email) {
@@ -1457,6 +1521,21 @@ if (forgotPasswordLink) {
 
 confirmAuthBtn.addEventListener('click', () => {
     const email = authEmail.value.trim();
+    const password = authPassword.value;
+
+    // Handle password reset mode (user clicked email link)
+    if (isPasswordResetMode) {
+        if (!password) {
+            showAuthError('Please enter your new password');
+            return;
+        }
+        if (password.length < 6) {
+            showAuthError('Password must be at least 6 characters');
+            return;
+        }
+        updatePassword(password);
+        return;
+    }
 
     // Handle forgot password mode
     if (isForgotPasswordMode) {
@@ -1468,7 +1547,6 @@ confirmAuthBtn.addEventListener('click', () => {
         return;
     }
 
-    const password = authPassword.value;
     if (!email || !password) {
         showAuthError('Please enter email and password');
         return;
@@ -1882,6 +1960,15 @@ initTheme(); // Use new theme initialization
 loadLocalCategories();
 renderPresets();
 renderCustomCategories();
+
+// Listen for auth state changes (including password recovery)
+supabaseClient.auth.onAuthStateChange((event, session) => {
+    if (event === 'PASSWORD_RECOVERY') {
+        // User clicked the password reset link in their email
+        showAuthModal();
+        setPasswordResetMode();
+    }
+});
 
 // Check for existing auth session
 checkAuth();
