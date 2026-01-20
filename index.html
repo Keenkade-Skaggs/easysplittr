@@ -1,0 +1,564 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="description" content="Easy Splittr - Split YNAB transactions effortlessly. For couples too lazy to do mental math. Save presets, sync across devices, and never touch a calculator again.">
+    <meta name="keywords" content="YNAB, transaction splitter, budget, split expenses, YNAB tool">
+    <title>Easy Splittr - Transaction Splitter for YNAB</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- Auth Section -->
+    <div class="auth-section" id="authSection">
+        <div id="authLoggedOut">
+            <button class="auth-btn" id="signInBtn">Sign In</button>
+        </div>
+        <div id="authLoggedIn" style="display: none;">
+            <div class="user-info">
+                <span class="sync-indicator" id="syncIndicator">
+                    <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Synced
+                </span>
+                <span class="user-email" id="userEmail"></span>
+                <button class="auth-btn" id="signOutBtn">Sign Out</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="header-controls">
+        <button class="help-toggle" id="helpToggle" aria-label="User guide">
+            <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+        </button>
+        <button class="theme-toggle" id="themeToggle" aria-label="Toggle light/dark mode">
+            <svg class="icon-moon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </svg>
+            <svg class="icon-sun" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+            </svg>
+        </button>
+    </div>
+
+    <div class="container">
+        <header>
+            <div class="logo">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+            </div>
+            <h1>Easy Splittr</h1>
+            <p class="subtitle">Split YNAB transactions effortlessly — for couples too lazy to do mental math or reach for a calculator.</p>
+        </header>
+
+        <div class="card">
+            <div class="input-group">
+                <label for="totalAmount">Transaction Total</label>
+                <input
+                    type="number"
+                    id="totalAmount"
+                    placeholder="169.54"
+                    step="0.01"
+                    max="999999999.99"
+                    autofocus
+                    aria-label="Total transaction amount"
+                >
+            </div>
+
+            <div class="settings-row">
+                <div class="setting-item">
+                    <label>Split Mode</label>
+                    <div class="toggle-group" id="splitModeToggle">
+                        <button class="toggle-option active" data-mode="percent">
+                            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                            </svg>
+                            Percentages
+                        </button>
+                        <button class="toggle-option" data-mode="amount">
+                            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                            Amounts
+                        </button>
+                    </div>
+                </div>
+                <div class="setting-item">
+                    <label>Decimals</label>
+                    <div class="toggle-group" id="decimalToggle">
+                        <button class="toggle-option active" data-decimals="2">0.00</button>
+                        <button class="toggle-option" data-decimals="0">Whole</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="presets-section">
+                <div class="presets-header">
+                    <h3>Saved Presets</h3>
+                </div>
+                <div class="preset-chips" id="presetChips">
+                    <div class="empty-presets">No saved presets yet</div>
+                </div>
+            </div>
+
+            <div class="custom-categories-section" id="customCategoriesSection">
+                <div class="custom-categories-header">
+                    <h3>Custom Categories</h3>
+                </div>
+                <div class="add-category-form">
+                    <input
+                        type="text"
+                        id="newCategoryInput"
+                        placeholder="Add custom category..."
+                        maxlength="50"
+                        aria-label="New category name"
+                    >
+                    <button class="btn btn-primary" id="addCategoryBtn">
+                        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        Add
+                    </button>
+                </div>
+                <div class="custom-category-list" id="customCategoryList">
+                    <span class="empty-categories">No custom categories yet</span>
+                </div>
+            </div>
+
+            <div class="quick-split-section">
+                <h3 class="quick-split-header">Quick Split</h3>
+                <div class="quick-split-chips">
+                    <button class="quick-split-chip" data-split="50,50">50/50</button>
+                    <button class="quick-split-chip" data-split="60,40">60/40</button>
+                    <button class="quick-split-chip" data-split="70,30">70/30</button>
+                </div>
+
+                <div class="split-by-people">
+                    <span class="split-by-label">Split between</span>
+                    <input type="number" id="splitPeopleCount" min="2" max="10" value="2" aria-label="Number of people">
+                    <span class="split-by-label">people</span>
+                    <button class="btn btn-secondary btn-split-people" id="splitByPeopleBtn">
+                        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                        Split Equally
+                    </button>
+                </div>
+            </div>
+
+            <div class="splits-section">
+                <div class="splits-header">
+                    <h2 id="splitsHeaderTitle">Split Percentages</h2>
+                    <div class="btn-group">
+                        <button class="btn btn-secondary" id="savePresetBtn" title="Save current split as preset">
+                            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                            </svg>
+                            Save
+                        </button>
+                        <button class="btn btn-secondary btn-icon" id="swapSplitsBtn" title="Swap split order">
+                            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                            </svg>
+                        </button>
+                        <button class="btn btn-primary" id="addSplitBtn">
+                            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                            </svg>
+                            Add Split
+                        </button>
+                    </div>
+                </div>
+
+                <div id="splitsContainer"></div>
+            </div>
+
+            <div class="split-result" id="resultSection" style="display: none;">
+                <h3>Amounts for YNAB</h3>
+                <div id="resultRows"></div>
+                <div class="total-row">
+                    <div>
+                        <span class="result-label">Total</span>
+                        <span class="status-indicator" id="statusIndicator"></span>
+                    </div>
+                    <span class="result-amount" id="resultTotal">$0.00</span>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p class="footer-tagline">Made with care for <a href="https://www.ynab.com" target="_blank" rel="noopener">YNAB</a> users</p>
+            <p class="footer-disclaimer">This app is not affiliated with, endorsed by, or connected to YNAB (You Need A Budget).</p>
+
+            <div class="footer-socials">
+                <a href="https://keenkadekonsulting.com/" target="_blank" rel="noopener" aria-label="Website" title="Website">
+                    <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3m9 9a9 9 0 01-9-9m9 9c1.657 0 3-4.03 3-9s-1.343-9-3-9m0 18c-1.657 0-3-4.03-3-9s1.343-9 3-9m-9 9a9 9 0 019-9" />
+                    </svg>
+                </a>
+                <a href="https://www.facebook.com/keenkade.skaggs/" target="_blank" rel="noopener" aria-label="Facebook" title="Facebook">
+                    <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/>
+                    </svg>
+                </a>
+                <a href="https://www.linkedin.com/in/keenkade-skaggs-10544118a/" target="_blank" rel="noopener" aria-label="LinkedIn" title="LinkedIn">
+                    <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/>
+                    </svg>
+                </a>
+                <a href="https://x.com/keenkade" target="_blank" rel="noopener" aria-label="X (Twitter)" title="X (Twitter)">
+                    <svg width="20" height="20" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                    </svg>
+                </a>
+            </div>
+
+            <p class="footer-links">
+                <a href="#" id="privacyPolicyLink">Privacy Policy</a>
+            </p>
+        </footer>
+    </div>
+
+    <!-- User Guide Modal -->
+    <div class="modal-overlay" id="guideModal">
+        <div class="modal guide-modal">
+            <div class="guide-header">
+                <h3>How to Use Easy Splittr</h3>
+                <button class="modal-close-btn" id="closeGuideBtn" aria-label="Close">
+                    <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="guide-content">
+                <div class="guide-section">
+                    <div class="guide-step">
+                        <span class="step-number">1</span>
+                        <div class="step-content">
+                            <h4>Enter Transaction Total</h4>
+                            <p>Type the total amount of your transaction in the input field. This is the amount you want to split.</p>
+                        </div>
+                    </div>
+
+                    <div class="guide-step">
+                        <span class="step-number">2</span>
+                        <div class="step-content">
+                            <h4>Choose Split Method</h4>
+                            <p>Use <strong>Quick Split</strong> buttons (50/50, 60/40, 70/30) for common splits, or manually add splits with custom percentages.</p>
+                        </div>
+                    </div>
+
+                    <div class="guide-step">
+                        <span class="step-number">3</span>
+                        <div class="step-content">
+                            <h4>Assign Categories</h4>
+                            <p>Select a category for each split from the dropdown. These help you remember what each split is for.</p>
+                        </div>
+                    </div>
+
+                    <div class="guide-step">
+                        <span class="step-number">4</span>
+                        <div class="step-content">
+                            <h4>Copy Amounts to YNAB</h4>
+                            <p>Click the <strong>Copy</strong> button next to each amount to copy it to your clipboard, then paste into YNAB.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="guide-divider"></div>
+
+                <h4 class="guide-features-title">Features</h4>
+
+                <div class="guide-feature">
+                    <span class="feature-icon">
+                        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                        </svg>
+                    </span>
+                    <div>
+                        <strong>Save Presets</strong>
+                        <p>Save your frequently used split configurations. Click "Save" to name and store a preset.</p>
+                    </div>
+                </div>
+
+                <div class="guide-feature">
+                    <span class="feature-icon">
+                        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                        </svg>
+                    </span>
+                    <div>
+                        <strong>Copy Category</strong>
+                        <p>Click the copy icon next to any category dropdown to copy the category name for pasting into YNAB.</p>
+                    </div>
+                </div>
+
+                <div class="guide-feature">
+                    <span class="feature-icon">
+                        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                        </svg>
+                    </span>
+                    <div>
+                        <strong>Swap Splits</strong>
+                        <p>Quickly reverse the order of your splits with the swap button.</p>
+                    </div>
+                </div>
+
+                <div class="guide-feature">
+                    <span class="feature-icon">
+                        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                    </span>
+                    <div>
+                        <strong>Custom Categories</strong>
+                        <p>Add your own categories that match your YNAB budget categories.</p>
+                    </div>
+                </div>
+
+                <div class="guide-feature">
+                    <span class="feature-icon">
+                        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                    </span>
+                    <div>
+                        <strong>Cloud Sync</strong>
+                        <p>Sign in to sync your presets and categories across all your devices.</p>
+                    </div>
+                </div>
+
+                <div class="guide-feature">
+                    <span class="feature-icon">
+                        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                        </svg>
+                    </span>
+                    <div>
+                        <strong>Dark/Light Mode</strong>
+                        <p>Automatically follows your system theme, or toggle manually with the button in the top right.</p>
+                    </div>
+                </div>
+
+                <div class="guide-feature">
+                    <span class="feature-icon">
+                        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                    </span>
+                    <div>
+                        <strong>Split by People</strong>
+                        <p>Quickly divide equally between any number of people (2-10).</p>
+                    </div>
+                </div>
+
+                <div class="guide-feature">
+                    <span class="feature-icon">
+                        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                    </span>
+                    <div>
+                        <strong>Amount Mode</strong>
+                        <p>Switch between percentages and fixed dollar amounts with the mode toggle.</p>
+                    </div>
+                </div>
+
+                <div class="guide-feature">
+                    <span class="feature-icon">
+                        <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5M7.188 2.239l.777 2.897M5.136 7.965l-2.898-.777M13.95 4.05l-2.122 2.122m-5.657 5.656l-2.12 2.122" />
+                        </svg>
+                    </span>
+                    <div>
+                        <strong>Keyboard Shortcuts</strong>
+                        <p>Press <strong>?</strong> for help, <strong>1/2/3</strong> for quick splits, <strong>Ctrl+S</strong> to save preset.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="guide-footer">
+                <button class="btn btn-primary" id="closeGuideFooterBtn">Got it!</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Privacy Policy Modal -->
+    <div class="modal-overlay" id="privacyModal">
+        <div class="modal privacy-modal">
+            <div class="privacy-header">
+                <h3>Privacy Policy</h3>
+                <button class="modal-close-btn" id="closePrivacyBtn" aria-label="Close">
+                    <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="privacy-content">
+                <p class="privacy-updated">Last updated: January 2025</p>
+
+                <h4>Overview</h4>
+                <p>Easy Splittr is committed to protecting your privacy. This policy explains how we handle your data.</p>
+
+                <h4>Data We Collect</h4>
+                <ul>
+                    <li><strong>Account Information:</strong> If you create an account, we store your email address and encrypted password.</li>
+                    <li><strong>User Preferences:</strong> Your saved presets and custom categories are stored to sync across devices.</li>
+                    <li><strong>Local Storage:</strong> Theme preferences and data are stored locally in your browser.</li>
+                </ul>
+
+                <h4>Data We Don't Collect</h4>
+                <ul>
+                    <li>We do not collect or store your transaction amounts</li>
+                    <li>We do not access your YNAB account</li>
+                    <li>We do not track your usage or behavior</li>
+                    <li>We do not sell or share your data with third parties</li>
+                </ul>
+
+                <h4>Data Storage</h4>
+                <p>If you create an account, your data is securely stored using Supabase with encryption at rest. Without an account, all data stays in your browser's local storage.</p>
+
+                <h4>Data Deletion</h4>
+                <p>You can delete your account and all associated data at any time by contacting us. Local storage can be cleared through your browser settings.</p>
+
+                <h4>Third-Party Services</h4>
+                <ul>
+                    <li><strong>Supabase:</strong> Used for authentication and data storage</li>
+                    <li><strong>Ko-fi:</strong> Optional donation widget</li>
+                </ul>
+
+                <h4>Contact</h4>
+                <p>For privacy concerns or data deletion requests, please contact us through the Ko-fi support button.</p>
+            </div>
+            <div class="privacy-footer">
+                <button class="btn btn-primary" id="acceptPrivacyBtn">Got it</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-overlay" id="presetModal">
+        <div class="modal">
+            <h3>Save Preset</h3>
+            <p>Give this split configuration a name so you can reuse it later.</p>
+            <div class="modal-input">
+                <label for="presetName">Preset Name</label>
+                <input
+                    type="text"
+                    id="presetName"
+                    placeholder="e.g., 50/50 Partner Split"
+                    maxlength="50"
+                    aria-label="Preset name"
+                >
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancelPresetBtn">Cancel</button>
+                <button class="btn btn-primary" id="confirmPresetBtn">Save Preset</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auth Modal -->
+    <div class="modal-overlay auth-modal" id="authModal">
+        <div class="modal auth-modal-content">
+            <div class="auth-header">
+                <div class="auth-icon">
+                    <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                    </svg>
+                </div>
+                <h3 id="authModalTitle">Welcome Back</h3>
+                <p id="authModalSubtitle">Sign in to sync your presets across devices</p>
+            </div>
+
+            <div class="auth-tabs">
+                <button class="auth-tab active" id="signInTab">
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
+                    </svg>
+                    Sign In
+                </button>
+                <button class="auth-tab" id="signUpTab">
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                    </svg>
+                    Sign Up
+                </button>
+            </div>
+
+            <div class="auth-error" id="authError"></div>
+            <div class="auth-success" id="authSuccess"></div>
+
+            <div class="auth-form">
+                <div class="auth-input-group">
+                    <label for="authEmail">Email</label>
+                    <div class="auth-input-wrapper">
+                        <svg class="auth-input-icon" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                        </svg>
+                        <input
+                            type="email"
+                            id="authEmail"
+                            placeholder="your@email.com"
+                            aria-label="Email address"
+                        >
+                    </div>
+                </div>
+                <div class="auth-input-group">
+                    <label for="authPassword">Password</label>
+                    <div class="auth-input-wrapper">
+                        <svg class="auth-input-icon" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                        </svg>
+                        <input
+                            type="password"
+                            id="authPassword"
+                            placeholder="Enter your password"
+                            minlength="6"
+                            aria-label="Password"
+                        >
+                    </div>
+                </div>
+            </div>
+
+            <div class="auth-actions">
+                <button class="btn btn-auth-secondary" id="cancelAuthBtn">Cancel</button>
+                <button class="btn btn-auth-primary" id="confirmAuthBtn">
+                    <span>Sign In</span>
+                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast">
+        <div class="toast-icon">
+            <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+            </svg>
+        </div>
+        <div class="toast-message" id="toastMessage"></div>
+    </div>
+
+    <div class="keyboard-hint" id="keyboardHint">
+        <kbd>?</kbd> Help &nbsp;&bull;&nbsp; <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> Quick splits &nbsp;&bull;&nbsp; <kbd>Ctrl+S</kbd> Save preset
+    </div>
+
+    <script src="app.js"></script>
+    <script src='https://storage.ko-fi.com/cdn/scripts/overlay-widget.js'></script>
+    <script>
+      kofiWidgetOverlay.draw('keenkadeskaggs', {
+        'type': 'floating-chat',
+        'floating-chat.donateButton.text': 'Support me',
+        'floating-chat.donateButton.background-color': '#794bc4',
+        'floating-chat.donateButton.text-color': '#fff'
+      });
+    </script>
+</body>
+</html>

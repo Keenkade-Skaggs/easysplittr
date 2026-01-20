@@ -1,0 +1,2582 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YNAB Transaction Splitter</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --primary-light: #818cf8;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg-primary: #0f172a;
+            --bg-secondary: #1e293b;
+            --bg-tertiary: #334155;
+            --text-primary: #f8fafc;
+            --text-secondary: #cbd5e1;
+            --text-tertiary: #94a3b8;
+            --border: #334155;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.3);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.5);
+        }
+
+        [data-theme="light"] {
+            --primary: #4f46e5;
+            --primary-dark: #4338ca;
+            --primary-light: #6366f1;
+            --bg-primary: #f1f5f9;
+            --bg-secondary: #ffffff;
+            --bg-tertiary: #e2e8f0;
+            --text-primary: #1e293b;
+            --text-secondary: #475569;
+            --text-tertiary: #64748b;
+            --border: #cbd5e1;
+            --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+
+        [data-theme="light"] body {
+            background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+        }
+
+        [data-theme="light"] h1 {
+            background: linear-gradient(135deg, var(--primary) 0%, #7c3aed 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        [data-theme="light"] .split-result {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.08) 0%, rgba(129, 140, 248, 0.04) 100%);
+            border-color: rgba(99, 102, 241, 0.2);
+        }
+
+        [data-theme="light"] .result-row {
+            border-bottom-color: rgba(99, 102, 241, 0.1);
+        }
+
+        [data-theme="light"] .total-row {
+            border-top-color: rgba(99, 102, 241, 0.2);
+        }
+
+        [data-theme="light"] .remainder-row {
+            background: rgba(99, 102, 241, 0.06);
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+            color: var(--text-primary);
+            line-height: 1.6;
+            padding: 20px;
+            min-height: 100vh;
+        }
+
+        .container {
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding-top: 20px;
+        }
+
+        .logo {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 56px;
+            height: 56px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-light) 100%);
+            border-radius: 16px;
+            margin-bottom: 16px;
+            box-shadow: var(--shadow-lg);
+        }
+
+        .logo svg {
+            width: 32px;
+            height: 32px;
+            color: white;
+        }
+
+        h1 {
+            background: linear-gradient(135deg, var(--primary-light) 0%, #a78bfa 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            font-size: 2.25rem;
+            font-weight: 800;
+            margin-bottom: 8px;
+            letter-spacing: -0.025em;
+        }
+
+        .subtitle {
+            color: var(--text-secondary);
+            font-size: 1rem;
+        }
+
+        .card {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px;
+            margin-bottom: 24px;
+            box-shadow: var(--shadow-xl);
+            backdrop-filter: blur(10px);
+        }
+
+        .input-group {
+            margin-bottom: 28px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        input[type="number"],
+        input[type="text"] {
+            width: 100%;
+            padding: 14px 16px;
+            background: var(--bg-tertiary);
+            border: 2px solid transparent;
+            border-radius: 10px;
+            font-size: 1.125rem;
+            color: var(--text-primary);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        input[type="number"]:focus,
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--primary);
+            background: var(--bg-secondary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+
+        input::placeholder {
+            color: var(--text-tertiary);
+        }
+
+        .presets-section {
+            margin-bottom: 28px;
+        }
+
+        .presets-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .presets-header h3 {
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        .preset-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            min-height: 44px;
+        }
+
+        .preset-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .preset-chip:hover {
+            background: var(--bg-primary);
+            border-color: var(--primary);
+            color: var(--text-primary);
+            transform: translateY(-1px);
+        }
+
+        .preset-chip-delete {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            height: 16px;
+            background: transparent;
+            border: none;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            font-size: 16px;
+            line-height: 1;
+            padding: 0;
+            transition: color 0.2s;
+        }
+
+        .preset-chip-delete:hover {
+            color: var(--danger);
+        }
+
+        .empty-presets {
+            color: var(--text-tertiary);
+            font-size: 0.875rem;
+            font-style: italic;
+            text-align: center;
+            padding: 12px;
+        }
+
+        .quick-split-section {
+            margin-bottom: 28px;
+        }
+
+        .quick-split-header {
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .quick-split-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .quick-split-chip {
+            display: inline-flex;
+            align-items: center;
+            padding: 8px 16px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            border: none;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: white;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .quick-split-chip:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-md);
+        }
+
+        .quick-split-chip:active {
+            transform: translateY(0);
+        }
+
+        .splits-section {
+            margin-top: 28px;
+        }
+
+        .splits-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .splits-header h2 {
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 10px 18px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            box-shadow: var(--shadow-md);
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .btn-primary:active {
+            transform: translateY(0);
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            border-color: var(--primary);
+        }
+
+        .btn-danger {
+            background: transparent;
+            color: var(--text-tertiary);
+            padding: 8px;
+            width: 36px;
+            height: 36px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-danger:hover {
+            background: rgba(239, 68, 68, 0.1);
+            color: var(--danger);
+        }
+
+        .btn-icon {
+            padding: 10px;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .split-item {
+            display: grid;
+            grid-template-columns: 1fr auto 100px auto;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 12px;
+            padding: 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid transparent;
+            border-radius: 12px;
+            transition: all 0.2s;
+        }
+
+        .split-item:hover {
+            border-color: var(--border);
+        }
+
+        .split-item input[type="text"] {
+            padding: 10px 12px;
+            font-size: 1rem;
+        }
+
+        .split-item select {
+            width: 100%;
+            padding: 10px 12px;
+            background: var(--bg-tertiary);
+            border: 2px solid transparent;
+            border-radius: 10px;
+            font-size: 1rem;
+            color: var(--text-primary);
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%2394a3b8' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 32px;
+        }
+
+        .split-item select:focus {
+            outline: none;
+            border-color: var(--primary);
+            background-color: var(--bg-secondary);
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.2);
+        }
+
+        .split-item select option {
+            background: var(--bg-secondary);
+            color: var(--text-primary);
+            padding: 8px;
+        }
+
+        .split-item select optgroup {
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .category-copy-btn {
+            padding: 8px 10px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            font-size: 0.75rem;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .category-copy-btn:hover {
+            background: var(--bg-primary);
+            border-color: var(--primary);
+            color: var(--primary-light);
+        }
+
+        .category-copy-btn.copied {
+            background: rgba(16, 185, 129, 0.2);
+            border-color: var(--success);
+            color: var(--success);
+        }
+
+        .split-item input[type="number"] {
+            padding: 10px 12px;
+            font-size: 1rem;
+            text-align: center;
+        }
+
+        .split-result {
+            margin-top: 32px;
+            padding: 28px;
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(129, 140, 248, 0.05) 100%);
+            border-radius: 16px;
+            border: 2px solid rgba(99, 102, 241, 0.3);
+            opacity: 0;
+            transform: translateY(10px);
+            animation: fadeInUp 0.3s forwards;
+        }
+
+        @keyframes fadeInUp {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .split-result h3 {
+            font-size: 0.875rem;
+            color: var(--primary-light);
+            margin-bottom: 20px;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            font-weight: 700;
+        }
+
+        .result-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 0;
+            border-bottom: 1px solid rgba(99, 102, 241, 0.15);
+        }
+
+        .result-row:last-child {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .result-label-group {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .result-label {
+            font-weight: 600;
+            color: var(--text-primary);
+            font-size: 1rem;
+        }
+
+        .result-percent {
+            color: var(--text-tertiary);
+            font-size: 0.875rem;
+        }
+
+        .result-amount-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .result-amount {
+            font-size: 1.75rem;
+            font-weight: 800;
+            color: var(--primary-light);
+            font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+            letter-spacing: -0.025em;
+        }
+
+        .copy-btn {
+            opacity: 0;
+            padding: 8px 10px;
+            background: rgba(99, 102, 241, 0.2);
+            border: 1px solid rgba(99, 102, 241, 0.3);
+            border-radius: 6px;
+            color: var(--primary-light);
+            cursor: pointer;
+            font-size: 0.75rem;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .result-row:hover .copy-btn {
+            opacity: 1;
+        }
+
+        .copy-btn:hover {
+            background: rgba(99, 102, 241, 0.3);
+            border-color: var(--primary);
+        }
+
+        .copy-btn:active {
+            transform: scale(0.95);
+        }
+
+        .copy-btn.copied {
+            background: rgba(16, 185, 129, 0.2);
+            border-color: var(--success);
+            color: var(--success);
+        }
+
+        .total-row {
+            margin-top: 16px;
+            padding-top: 20px;
+            border-top: 2px solid rgba(99, 102, 241, 0.3);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .total-row .result-label {
+            font-weight: 800;
+            font-size: 1.125rem;
+        }
+
+        .total-row .result-amount {
+            font-size: 2.25rem;
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            padding: 4px 10px;
+            border-radius: 12px;
+            margin-left: 8px;
+        }
+
+        .status-matched {
+            background: rgba(16, 185, 129, 0.2);
+            color: var(--success);
+        }
+
+        .status-warning {
+            background: rgba(245, 158, 11, 0.2);
+            color: var(--warning);
+        }
+
+        .remainder-row {
+            background: rgba(99, 102, 241, 0.08);
+            margin: 0 -28px;
+            padding: 16px 28px;
+            border-radius: 0;
+        }
+
+        .remainder-row .result-label {
+            color: var(--primary-light);
+            font-style: italic;
+        }
+
+        .remainder-row .result-percent {
+            color: var(--primary-light);
+            opacity: 0.7;
+        }
+
+        .adjust-btn {
+            opacity: 0;
+            padding: 6px 10px;
+            background: rgba(16, 185, 129, 0.2);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 6px;
+            color: var(--success);
+            cursor: pointer;
+            font-size: 0.7rem;
+            font-weight: 600;
+            transition: all 0.2s;
+            white-space: nowrap;
+        }
+
+        .result-row:hover .adjust-btn {
+            opacity: 1;
+        }
+
+        .adjust-btn:hover {
+            background: rgba(16, 185, 129, 0.3);
+            border-color: var(--success);
+        }
+
+        .adjust-btn:active {
+            transform: scale(0.95);
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            padding: 16px 24px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            box-shadow: var(--shadow-xl);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast-icon {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 24px;
+            height: 24px;
+            color: var(--success);
+        }
+
+        .toast-message {
+            color: var(--text-primary);
+            font-weight: 500;
+            font-size: 0.875rem;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 48px;
+            padding: 24px;
+            color: var(--text-tertiary);
+            font-size: 0.875rem;
+        }
+
+        footer a {
+            color: var(--primary-light);
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.2s;
+        }
+
+        footer a:hover {
+            color: var(--primary);
+        }
+
+        .theme-toggle {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 10px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .theme-toggle:hover {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            border-color: var(--primary);
+        }
+
+        .theme-toggle svg {
+            width: 20px;
+            height: 20px;
+        }
+
+        .theme-toggle .icon-sun {
+            display: none;
+        }
+
+        [data-theme="light"] .theme-toggle .icon-sun {
+            display: block;
+        }
+
+        [data-theme="light"] .theme-toggle .icon-moon {
+            display: none;
+        }
+
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            padding: 20px;
+        }
+
+        .modal-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: var(--shadow-xl);
+            transform: scale(0.9);
+            transition: transform 0.3s;
+        }
+
+        .modal-overlay.show .modal {
+            transform: scale(1);
+        }
+
+        .modal h3 {
+            font-size: 1.5rem;
+            margin-bottom: 8px;
+            color: var(--text-primary);
+        }
+
+        .modal p {
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+            font-size: 0.875rem;
+        }
+
+        .modal-input {
+            margin-bottom: 24px;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+        }
+
+        @media (max-width: 640px) {
+            .container {
+                padding: 0;
+            }
+
+            .card {
+                padding: 24px;
+            }
+
+            h1 {
+                font-size: 1.875rem;
+            }
+
+            .split-item {
+                grid-template-columns: 1fr auto 70px auto;
+                gap: 6px;
+                padding: 12px;
+            }
+
+            .result-amount {
+                font-size: 1.5rem;
+            }
+
+            .total-row .result-amount {
+                font-size: 1.875rem;
+            }
+
+            .toast {
+                right: 12px;
+                bottom: 12px;
+                left: 12px;
+            }
+        }
+
+        /* Auth UI Styles */
+        .auth-section {
+            position: absolute;
+            top: 20px;
+            right: 70px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .auth-btn {
+            padding: 8px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .auth-btn:hover {
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            border-color: var(--primary);
+        }
+
+        .user-info {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .user-email {
+            max-width: 150px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .sync-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 8px;
+            background: rgba(16, 185, 129, 0.1);
+            border-radius: 12px;
+            font-size: 0.75rem;
+            color: var(--success);
+        }
+
+        .sync-indicator.syncing {
+            background: rgba(245, 158, 11, 0.1);
+            color: var(--warning);
+        }
+
+        /* Auth Modal Styles */
+        .auth-modal .modal {
+            max-width: 380px;
+        }
+
+        .auth-tabs {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 24px;
+        }
+
+        .auth-tab {
+            flex: 1;
+            padding: 10px;
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid var(--border);
+            color: var(--text-tertiary);
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .auth-tab.active {
+            color: var(--primary-light);
+            border-bottom-color: var(--primary);
+        }
+
+        .auth-tab:hover:not(.active) {
+            color: var(--text-secondary);
+        }
+
+        .auth-error {
+            padding: 12px;
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 8px;
+            color: var(--danger);
+            font-size: 0.875rem;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .auth-error.show {
+            display: block;
+        }
+
+        .auth-success {
+            padding: 12px;
+            background: rgba(16, 185, 129, 0.1);
+            border: 1px solid rgba(16, 185, 129, 0.3);
+            border-radius: 8px;
+            color: var(--success);
+            font-size: 0.875rem;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .auth-success.show {
+            display: block;
+        }
+
+        /* Custom Categories Section */
+        .custom-categories-section {
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+        }
+
+        .custom-categories-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .custom-categories-header h3 {
+            font-size: 0.875rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
+        .add-category-form {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .add-category-form input {
+            flex: 1;
+            padding: 8px 12px;
+            font-size: 0.875rem;
+        }
+
+        .custom-category-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .custom-category-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: rgba(99, 102, 241, 0.1);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: 16px;
+            font-size: 0.8rem;
+            color: var(--primary-light);
+        }
+
+        .custom-category-chip button {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 14px;
+            height: 14px;
+            background: transparent;
+            border: none;
+            color: var(--text-tertiary);
+            cursor: pointer;
+            font-size: 14px;
+            line-height: 1;
+            padding: 0;
+            transition: color 0.2s;
+        }
+
+        .custom-category-chip button:hover {
+            color: var(--danger);
+        }
+
+        .empty-categories {
+            color: var(--text-tertiary);
+            font-size: 0.8rem;
+            font-style: italic;
+        }
+
+        @media (max-width: 640px) {
+            .auth-section {
+                position: static;
+                justify-content: center;
+                margin-bottom: 16px;
+            }
+
+            .theme-toggle {
+                position: static;
+            }
+
+            header {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+
+            .header-controls {
+                display: flex;
+                gap: 12px;
+                margin-bottom: 16px;
+            }
+        }
+    </style>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <!-- Auth Section -->
+    <div class="auth-section" id="authSection">
+        <div id="authLoggedOut">
+            <button class="auth-btn" id="signInBtn">Sign In</button>
+        </div>
+        <div id="authLoggedIn" style="display: none;">
+            <div class="user-info">
+                <span class="sync-indicator" id="syncIndicator">
+                    <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                    </svg>
+                    Synced
+                </span>
+                <span class="user-email" id="userEmail"></span>
+                <button class="auth-btn" id="signOutBtn">Sign Out</button>
+            </div>
+        </div>
+    </div>
+
+    <button class="theme-toggle" id="themeToggle" aria-label="Toggle light/dark mode">
+        <svg class="icon-moon" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+        </svg>
+        <svg class="icon-sun" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+        </svg>
+    </button>
+
+    <div class="container">
+        <header>
+            <div class="logo">
+                <svg fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                </svg>
+            </div>
+            <h1>Transaction Splitter</h1>
+            <p class="subtitle">Split transactions with precision for YNAB</p>
+        </header>
+
+        <div class="card">
+            <div class="input-group">
+                <label for="totalAmount">Transaction Total</label>
+                <input
+                    type="number"
+                    id="totalAmount"
+                    placeholder="169.54"
+                    step="0.01"
+                    max="999999999.99"
+                    autofocus
+                    aria-label="Total transaction amount"
+                >
+            </div>
+
+            <div class="presets-section">
+                <div class="presets-header">
+                    <h3>Saved Presets</h3>
+                </div>
+                <div class="preset-chips" id="presetChips">
+                    <div class="empty-presets">No saved presets yet</div>
+                </div>
+            </div>
+
+            <div class="custom-categories-section" id="customCategoriesSection">
+                <div class="custom-categories-header">
+                    <h3>Custom Categories</h3>
+                </div>
+                <div class="add-category-form">
+                    <input
+                        type="text"
+                        id="newCategoryInput"
+                        placeholder="Add custom category..."
+                        maxlength="50"
+                        aria-label="New category name"
+                    >
+                    <button class="btn btn-primary" id="addCategoryBtn">
+                        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                        </svg>
+                        Add
+                    </button>
+                </div>
+                <div class="custom-category-list" id="customCategoryList">
+                    <span class="empty-categories">No custom categories yet</span>
+                </div>
+            </div>
+
+            <div class="quick-split-section">
+                <h3 class="quick-split-header">Quick Split</h3>
+                <div class="quick-split-chips">
+                    <button class="quick-split-chip" onclick="applyQuickSplit([50, 50])">50/50</button>
+                    <button class="quick-split-chip" onclick="applyQuickSplit([60, 40])">60/40</button>
+                    <button class="quick-split-chip" onclick="applyQuickSplit([70, 30])">70/30</button>
+                </div>
+            </div>
+
+            <div class="splits-section">
+                <div class="splits-header">
+                    <h2>Split Percentages</h2>
+                    <div class="btn-group">
+                        <button class="btn btn-secondary" id="savePresetBtn" title="Save current split as preset">
+                            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                            </svg>
+                            Save
+                        </button>
+                        <button class="btn btn-secondary btn-icon" id="swapSplitsBtn" title="Swap split order">
+                            <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                            </svg>
+                        </button>
+                        <button class="btn btn-primary" id="addSplitBtn">
+                            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                            </svg>
+                            Add Split
+                        </button>
+                    </div>
+                </div>
+
+                <div id="splitsContainer"></div>
+            </div>
+
+            <div class="split-result" id="resultSection" style="display: none;">
+                <h3>Amounts for YNAB</h3>
+                <div id="resultRows"></div>
+                <div class="total-row">
+                    <div>
+                        <span class="result-label">Total</span>
+                        <span class="status-indicator" id="statusIndicator"></span>
+                    </div>
+                    <span class="result-amount" id="resultTotal">$0.00</span>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            Made with care for <a href="https://www.ynab.com" target="_blank" rel="noopener">YNAB</a> users
+        </footer>
+    </div>
+
+    <div class="modal-overlay" id="presetModal">
+        <div class="modal">
+            <h3>Save Preset</h3>
+            <p>Give this split configuration a name so you can reuse it later.</p>
+            <div class="modal-input">
+                <label for="presetName">Preset Name</label>
+                <input
+                    type="text"
+                    id="presetName"
+                    placeholder="e.g., 50/50 Partner Split"
+                    maxlength="50"
+                    aria-label="Preset name"
+                >
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancelPresetBtn">Cancel</button>
+                <button class="btn btn-primary" id="confirmPresetBtn">Save Preset</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auth Modal -->
+    <div class="modal-overlay auth-modal" id="authModal">
+        <div class="modal">
+            <h3 id="authModalTitle">Sign In</h3>
+            <p id="authModalSubtitle">Sign in to sync your presets and categories across devices.</p>
+
+            <div class="auth-tabs">
+                <button class="auth-tab active" id="signInTab">Sign In</button>
+                <button class="auth-tab" id="signUpTab">Sign Up</button>
+            </div>
+
+            <div class="auth-error" id="authError"></div>
+            <div class="auth-success" id="authSuccess"></div>
+
+            <div class="modal-input">
+                <label for="authEmail">Email</label>
+                <input
+                    type="email"
+                    id="authEmail"
+                    placeholder="your@email.com"
+                    aria-label="Email address"
+                >
+            </div>
+            <div class="modal-input">
+                <label for="authPassword">Password</label>
+                <input
+                    type="password"
+                    id="authPassword"
+                    placeholder="Enter your password"
+                    minlength="6"
+                    aria-label="Password"
+                >
+            </div>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="cancelAuthBtn">Cancel</button>
+                <button class="btn btn-primary" id="confirmAuthBtn">Sign In</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast">
+        <div class="toast-icon">
+            <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7" />
+            </svg>
+        </div>
+        <div class="toast-message" id="toastMessage"></div>
+    </div>
+
+    <script>
+        // ============================================
+        // SUPABASE INITIALIZATION
+        // ============================================
+        const SUPABASE_URL = 'https://plghpaaxsbsuuxfmuflq.supabase.co';
+        const SUPABASE_ANON_KEY = 'sb_publishable_EfFJ4AO1Ts__Nd6S6qR0Ag_8Yvu1bYb';
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        let currentUser = null;
+        let customCategories = []; // User's custom categories from Supabase
+
+        // ============================================
+        // ORIGINAL APP STATE
+        // ============================================
+        let splitId = 0;
+        const splits = [];
+        const STORAGE_KEY = 'ynab-splitter-presets';
+        const CATEGORIES_STORAGE_KEY = 'ynab-splitter-categories';
+
+        const totalInput = document.getElementById('totalAmount');
+        const splitsContainer = document.getElementById('splitsContainer');
+        const addSplitBtn = document.getElementById('addSplitBtn');
+        const savePresetBtn = document.getElementById('savePresetBtn');
+        const resultSection = document.getElementById('resultSection');
+        const resultRows = document.getElementById('resultRows');
+        const resultTotal = document.getElementById('resultTotal');
+        const statusIndicator = document.getElementById('statusIndicator');
+        const presetChips = document.getElementById('presetChips');
+        const presetModal = document.getElementById('presetModal');
+        const presetNameInput = document.getElementById('presetName');
+        const cancelPresetBtn = document.getElementById('cancelPresetBtn');
+        const confirmPresetBtn = document.getElementById('confirmPresetBtn');
+        const toast = document.getElementById('toast');
+        const toastMessage = document.getElementById('toastMessage');
+
+        // Auth UI elements
+        const authModal = document.getElementById('authModal');
+        const authEmail = document.getElementById('authEmail');
+        const authPassword = document.getElementById('authPassword');
+        const authError = document.getElementById('authError');
+        const authSuccess = document.getElementById('authSuccess');
+        const signInBtn = document.getElementById('signInBtn');
+        const signOutBtn = document.getElementById('signOutBtn');
+        const signInTab = document.getElementById('signInTab');
+        const signUpTab = document.getElementById('signUpTab');
+        const cancelAuthBtn = document.getElementById('cancelAuthBtn');
+        const confirmAuthBtn = document.getElementById('confirmAuthBtn');
+        const authLoggedOut = document.getElementById('authLoggedOut');
+        const authLoggedIn = document.getElementById('authLoggedIn');
+        const userEmailSpan = document.getElementById('userEmail');
+        const syncIndicator = document.getElementById('syncIndicator');
+
+        let isSignUpMode = false;
+
+        // Constants for validation
+        const MAX_AMOUNT = 999999999.99;
+        const MAX_PRESET_NAME_LENGTH = 50;
+
+        // Default category options for dropdown
+        const DEFAULT_CATEGORY_OPTIONS = [
+            { group: 'Household', options: ['Partner A', 'Partner B', 'Shared', 'Personal'] },
+            { group: 'Common', options: ['Groceries', 'Dining Out', 'Gas', 'Entertainment', 'Utilities', 'Rent/Mortgage', 'Transportation', 'Shopping', 'Healthcare', 'Subscriptions'] }
+        ];
+
+        // Dynamic category options (merges defaults with custom)
+        let CATEGORY_OPTIONS = [...DEFAULT_CATEGORY_OPTIONS];
+
+        // ============================================
+        // AUTH FUNCTIONS
+        // ============================================
+        async function checkAuth() {
+            try {
+                const { data: { session }, error } = await supabase.auth.getSession();
+                if (error) throw error;
+                if (session) {
+                    currentUser = session.user;
+                    updateAuthUI();
+                    await syncFromCloud();
+                }
+            } catch (err) {
+                console.error('Auth check failed:', err);
+            }
+        }
+
+        async function signIn(email, password) {
+            try {
+                showSyncStatus('syncing');
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email,
+                    password
+                });
+                if (error) throw error;
+                currentUser = data.user;
+                updateAuthUI();
+                hideAuthModal();
+                await syncFromCloud();
+                showToast('Signed in successfully');
+            } catch (err) {
+                showAuthError(err.message);
+            } finally {
+                showSyncStatus('synced');
+            }
+        }
+
+        async function signUp(email, password) {
+            try {
+                showSyncStatus('syncing');
+                const { data, error } = await supabase.auth.signUp({
+                    email,
+                    password
+                });
+                if (error) throw error;
+                if (data.user && !data.session) {
+                    // Email confirmation required
+                    showAuthSuccess('Check your email to confirm your account!');
+                } else if (data.session) {
+                    currentUser = data.user;
+                    updateAuthUI();
+                    hideAuthModal();
+                    // Migrate local presets to cloud
+                    await migrateLocalPresetsToCloud();
+                    showToast('Account created successfully');
+                }
+            } catch (err) {
+                showAuthError(err.message);
+            } finally {
+                showSyncStatus('synced');
+            }
+        }
+
+        async function signOut() {
+            try {
+                const { error } = await supabase.auth.signOut();
+                if (error) throw error;
+                currentUser = null;
+                customCategories = [];
+                updateCategoryOptions();
+                updateAuthUI();
+                renderPresets();
+                showToast('Signed out');
+            } catch (err) {
+                showToast('Error signing out');
+                console.error(err);
+            }
+        }
+
+        function updateAuthUI() {
+            if (currentUser) {
+                authLoggedOut.style.display = 'none';
+                authLoggedIn.style.display = 'block';
+                userEmailSpan.textContent = currentUser.email;
+            } else {
+                authLoggedOut.style.display = 'block';
+                authLoggedIn.style.display = 'none';
+                userEmailSpan.textContent = '';
+            }
+        }
+
+        function showAuthModal() {
+            authEmail.value = '';
+            authPassword.value = '';
+            authError.classList.remove('show');
+            authSuccess.classList.remove('show');
+            authModal.classList.add('show');
+            authEmail.focus();
+        }
+
+        function hideAuthModal() {
+            authModal.classList.remove('show');
+        }
+
+        function showAuthError(message) {
+            authError.textContent = message;
+            authError.classList.add('show');
+            authSuccess.classList.remove('show');
+        }
+
+        function showAuthSuccess(message) {
+            authSuccess.textContent = message;
+            authSuccess.classList.add('show');
+            authError.classList.remove('show');
+        }
+
+        function setAuthMode(signUp) {
+            isSignUpMode = signUp;
+            if (signUp) {
+                signUpTab.classList.add('active');
+                signInTab.classList.remove('active');
+                confirmAuthBtn.textContent = 'Sign Up';
+            } else {
+                signInTab.classList.add('active');
+                signUpTab.classList.remove('active');
+                confirmAuthBtn.textContent = 'Sign In';
+            }
+            authError.classList.remove('show');
+            authSuccess.classList.remove('show');
+        }
+
+        function showSyncStatus(status) {
+            // Clear existing content safely
+            while (syncIndicator.firstChild) {
+                syncIndicator.removeChild(syncIndicator.firstChild);
+            }
+
+            // Create SVG icon
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('width', '12');
+            svg.setAttribute('height', '12');
+            svg.setAttribute('fill', 'none');
+            svg.setAttribute('viewBox', '0 0 24 24');
+            svg.setAttribute('stroke', 'currentColor');
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            path.setAttribute('stroke-linecap', 'round');
+            path.setAttribute('stroke-linejoin', 'round');
+            path.setAttribute('stroke-width', '2');
+
+            if (status === 'syncing') {
+                syncIndicator.classList.add('syncing');
+                path.setAttribute('d', 'M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15');
+                svg.appendChild(path);
+                syncIndicator.appendChild(svg);
+                syncIndicator.appendChild(document.createTextNode(' Syncing...'));
+            } else {
+                syncIndicator.classList.remove('syncing');
+                path.setAttribute('d', 'M5 13l4 4L19 7');
+                svg.appendChild(path);
+                syncIndicator.appendChild(svg);
+                syncIndicator.appendChild(document.createTextNode(' Synced'));
+            }
+        }
+
+        // ============================================
+        // CLOUD SYNC FUNCTIONS
+        // ============================================
+        async function syncFromCloud() {
+            if (!currentUser) return;
+            showSyncStatus('syncing');
+            try {
+                await Promise.all([
+                    syncPresetsFromCloud(),
+                    syncCategoriesFromCloud()
+                ]);
+            } catch (err) {
+                console.error('Sync failed:', err);
+            } finally {
+                showSyncStatus('synced');
+            }
+        }
+
+        async function syncPresetsFromCloud() {
+            if (!currentUser) return;
+            try {
+                const { data, error } = await supabase
+                    .from('user_presets')
+                    .select('*')
+                    .eq('user_id', currentUser.id)
+                    .order('created_at', { ascending: true });
+                if (error) throw error;
+                // Convert cloud presets to local format and save to localStorage
+                const cloudPresets = data.map(p => ({
+                    id: p.id,
+                    name: p.name,
+                    splits: p.splits
+                }));
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(cloudPresets));
+                renderPresets();
+            } catch (err) {
+                console.error('Failed to sync presets:', err);
+            }
+        }
+
+        async function savePresetToCloud(preset) {
+            if (!currentUser) return null;
+            try {
+                const { data, error } = await supabase
+                    .from('user_presets')
+                    .insert({
+                        user_id: currentUser.id,
+                        name: preset.name,
+                        splits: preset.splits
+                    })
+                    .select()
+                    .single();
+                if (error) throw error;
+                return data.id;
+            } catch (err) {
+                console.error('Failed to save preset to cloud:', err);
+                return null;
+            }
+        }
+
+        async function deletePresetFromCloud(presetId) {
+            if (!currentUser || !presetId) return;
+            try {
+                const { error } = await supabase
+                    .from('user_presets')
+                    .delete()
+                    .eq('id', presetId)
+                    .eq('user_id', currentUser.id);
+                if (error) throw error;
+            } catch (err) {
+                console.error('Failed to delete preset from cloud:', err);
+            }
+        }
+
+        async function migrateLocalPresetsToCloud() {
+            if (!currentUser) return;
+            const localPresets = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+            for (const preset of localPresets) {
+                if (!preset.id || typeof preset.id === 'number') {
+                    // This is a local-only preset, migrate it
+                    const cloudId = await savePresetToCloud(preset);
+                    if (cloudId) {
+                        preset.id = cloudId;
+                    }
+                }
+            }
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(localPresets));
+            await syncPresetsFromCloud();
+        }
+
+        // ============================================
+        // CUSTOM CATEGORIES SYNC
+        // ============================================
+        async function syncCategoriesFromCloud() {
+            if (!currentUser) return;
+            try {
+                const { data, error } = await supabase
+                    .from('user_categories')
+                    .select('*')
+                    .eq('user_id', currentUser.id)
+                    .order('created_at', { ascending: true });
+                if (error) throw error;
+                customCategories = data.map(c => ({
+                    id: c.id,
+                    name: c.name,
+                    group: c.group_name
+                }));
+                localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(customCategories));
+                updateCategoryOptions();
+                renderCustomCategories();
+            } catch (err) {
+                console.error('Failed to sync categories:', err);
+            }
+        }
+
+        async function saveCategoryToCloud(category) {
+            if (!currentUser) return null;
+            try {
+                const { data, error } = await supabase
+                    .from('user_categories')
+                    .insert({
+                        user_id: currentUser.id,
+                        name: category.name,
+                        group_name: category.group || 'Custom'
+                    })
+                    .select()
+                    .single();
+                if (error) throw error;
+                return data.id;
+            } catch (err) {
+                console.error('Failed to save category to cloud:', err);
+                return null;
+            }
+        }
+
+        async function deleteCategoryFromCloud(categoryId) {
+            if (!currentUser || !categoryId) return;
+            try {
+                const { error } = await supabase
+                    .from('user_categories')
+                    .delete()
+                    .eq('id', categoryId)
+                    .eq('user_id', currentUser.id);
+                if (error) throw error;
+            } catch (err) {
+                console.error('Failed to delete category from cloud:', err);
+            }
+        }
+
+        function updateCategoryOptions() {
+            // Start with default categories
+            CATEGORY_OPTIONS = [...DEFAULT_CATEGORY_OPTIONS];
+
+            // Add custom categories if any
+            if (customCategories.length > 0) {
+                const customGroup = {
+                    group: 'Custom',
+                    options: customCategories.map(c => c.name)
+                };
+                CATEGORY_OPTIONS.unshift(customGroup);
+            }
+
+            // Refresh all category dropdowns
+            refreshAllCategorySelects();
+        }
+
+        function refreshAllCategorySelects() {
+            const selects = splitsContainer.querySelectorAll('select');
+            selects.forEach((select, index) => {
+                const currentValue = select.value;
+                const newSelect = createCategorySelect(currentValue);
+                newSelect.addEventListener('change', (e) => {
+                    if (splits[index]) {
+                        splits[index].name = e.target.value;
+                        calculateSplits();
+                    }
+                });
+                select.parentNode.replaceChild(newSelect, select);
+            });
+        }
+
+        function loadLocalCategories() {
+            try {
+                const stored = localStorage.getItem(CATEGORIES_STORAGE_KEY);
+                if (stored) {
+                    customCategories = JSON.parse(stored);
+                    updateCategoryOptions();
+                    renderCustomCategories();
+                }
+            } catch (e) {
+                customCategories = [];
+            }
+        }
+
+        async function addCustomCategory(name) {
+            if (!name.trim()) {
+                showToast('Please enter a category name');
+                return;
+            }
+
+            const categoryName = name.trim();
+
+            // Check for duplicates
+            const allOptions = CATEGORY_OPTIONS.flatMap(g => g.options);
+            if (allOptions.includes(categoryName)) {
+                showToast('Category already exists');
+                return;
+            }
+
+            const newCategory = { name: categoryName, group: 'Custom' };
+
+            if (currentUser) {
+                showSyncStatus('syncing');
+                const cloudId = await saveCategoryToCloud(newCategory);
+                if (cloudId) {
+                    newCategory.id = cloudId;
+                }
+                showSyncStatus('synced');
+            }
+
+            customCategories.push(newCategory);
+            localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(customCategories));
+            updateCategoryOptions();
+            renderCustomCategories();
+            showToast(`Added category: ${categoryName}`);
+        }
+
+        async function deleteCustomCategory(index) {
+            const category = customCategories[index];
+            if (!category) return;
+
+            if (currentUser && category.id) {
+                showSyncStatus('syncing');
+                await deleteCategoryFromCloud(category.id);
+                showSyncStatus('synced');
+            }
+
+            customCategories.splice(index, 1);
+            localStorage.setItem(CATEGORIES_STORAGE_KEY, JSON.stringify(customCategories));
+            updateCategoryOptions();
+            renderCustomCategories();
+            showToast(`Deleted category: ${category.name}`);
+        }
+
+        function renderCustomCategories() {
+            const container = document.getElementById('customCategoryList');
+            if (!container) return;
+
+            // Clear existing content
+            while (container.firstChild) {
+                container.removeChild(container.firstChild);
+            }
+
+            if (customCategories.length === 0) {
+                const empty = document.createElement('span');
+                empty.className = 'empty-categories';
+                empty.textContent = 'No custom categories yet';
+                container.appendChild(empty);
+                return;
+            }
+
+            customCategories.forEach((category, index) => {
+                const chip = document.createElement('div');
+                chip.className = 'custom-category-chip';
+
+                const nameSpan = document.createElement('span');
+                nameSpan.textContent = category.name;
+                chip.appendChild(nameSpan);
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = '\u00D7';
+                deleteBtn.setAttribute('aria-label', `Delete category ${category.name}`);
+                deleteBtn.addEventListener('click', () => deleteCustomCategory(index));
+                chip.appendChild(deleteBtn);
+
+                container.appendChild(chip);
+            });
+        }
+
+        // Helper function to create SVG icons safely using DOM methods
+        function createSvgIcon(type, width = 12, height = 12) {
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.setAttribute('width', String(width));
+            svg.setAttribute('height', String(height));
+            svg.setAttribute('fill', 'currentColor');
+            svg.setAttribute('viewBox', '0 0 24 24');
+
+            const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+
+            if (type === 'checkmark') {
+                path.setAttribute('d', 'M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z');
+            } else if (type === 'warning') {
+                path.setAttribute('d', 'M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z');
+            } else if (type === 'delete') {
+                svg.setAttribute('fill', 'none');
+                svg.setAttribute('stroke', 'currentColor');
+                path.setAttribute('stroke-linecap', 'round');
+                path.setAttribute('stroke-linejoin', 'round');
+                path.setAttribute('stroke-width', '2.5');
+                path.setAttribute('d', 'M6 18L18 6M6 6l12 12');
+            }
+
+            svg.appendChild(path);
+            return svg;
+        }
+
+        // Input validation helpers
+        function validateAndSanitizeAmount(value) {
+            if (value === '' || value === null || value === undefined) {
+                return 0;
+            }
+            // Convert to string and check for scientific notation
+            const strValue = String(value);
+            if (strValue.toLowerCase().includes('e')) {
+                return null; // Invalid - scientific notation
+            }
+            const num = parseFloat(value);
+            if (isNaN(num)) {
+                return 0;
+            }
+            // Use absolute value for max check, allow negatives for refunds
+            if (Math.abs(num) > MAX_AMOUNT) {
+                return num > 0 ? MAX_AMOUNT : -MAX_AMOUNT;
+            }
+            return num;
+        }
+
+        // Preset management
+        function loadPresets() {
+            try {
+                return JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function savePresets(presets) {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(presets));
+        }
+
+        function renderPresets() {
+            const presets = loadPresets();
+            presetChips.innerHTML = '';
+
+            if (presets.length === 0) {
+                const empty = document.createElement('div');
+                empty.className = 'empty-presets';
+                empty.textContent = 'No saved presets yet';
+                presetChips.appendChild(empty);
+                return;
+            }
+
+            presets.forEach((preset, index) => {
+                const chip = document.createElement('div');
+                chip.className = 'preset-chip';
+                chip.setAttribute('role', 'button');
+                chip.setAttribute('tabindex', '0');
+                chip.setAttribute('aria-label', `Load preset ${preset.name}`);
+
+                const label = document.createElement('span');
+                label.textContent = preset.name;
+                chip.appendChild(label);
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'preset-chip-delete';
+                deleteBtn.textContent = '\u00D7';
+                deleteBtn.setAttribute('aria-label', `Delete preset ${preset.name}`);
+                deleteBtn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    deletePreset(index);
+                });
+                chip.appendChild(deleteBtn);
+
+                chip.addEventListener('click', () => loadPreset(preset));
+                chip.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        loadPreset(preset);
+                    }
+                });
+
+                presetChips.appendChild(chip);
+            });
+        }
+
+        function loadPreset(preset) {
+            // Clear existing splits
+            splits.length = 0;
+            splitsContainer.innerHTML = '';
+
+            // Add splits from preset
+            preset.splits.forEach(split => {
+                addSplit(split.percent, split.name);
+            });
+
+            showToast(`Loaded preset: ${preset.name}`);
+        }
+
+        async function deletePreset(index) {
+            const presets = loadPresets();
+            const preset = presets[index];
+            const presetName = preset.name;
+
+            // Delete from cloud if logged in and has cloud ID
+            if (currentUser && preset.id && typeof preset.id === 'string') {
+                showSyncStatus('syncing');
+                await deletePresetFromCloud(preset.id);
+                showSyncStatus('synced');
+            }
+
+            presets.splice(index, 1);
+            savePresets(presets);
+            renderPresets();
+            showToast(`Deleted preset: ${presetName}`);
+        }
+
+        function showPresetModal() {
+            if (splits.length === 0) {
+                showToast('Add some splits first');
+                return;
+            }
+            presetNameInput.value = '';
+            presetModal.classList.add('show');
+            presetNameInput.focus();
+        }
+
+        function hidePresetModal() {
+            presetModal.classList.remove('show');
+        }
+
+        async function saveCurrentPreset() {
+            let name = presetNameInput.value.trim();
+            if (!name) {
+                showToast('Please enter a preset name');
+                return;
+            }
+
+            // Enforce max length
+            if (name.length > MAX_PRESET_NAME_LENGTH) {
+                name = name.substring(0, MAX_PRESET_NAME_LENGTH);
+            }
+
+            const preset = {
+                name,
+                splits: splits.map(s => ({ name: s.name, percent: s.percent }))
+            };
+
+            // Save to cloud if logged in
+            if (currentUser) {
+                showSyncStatus('syncing');
+                const cloudId = await savePresetToCloud(preset);
+                if (cloudId) {
+                    preset.id = cloudId;
+                }
+                showSyncStatus('synced');
+            }
+
+            const presets = loadPresets();
+            presets.push(preset);
+            savePresets(presets);
+            renderPresets();
+            hidePresetModal();
+            showToast(`Saved preset: ${name}`);
+        }
+
+        // Toast notification
+        function showToast(message) {
+            toastMessage.textContent = message;
+            toast.classList.add('show');
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Copy to clipboard
+        async function copyToClipboard(text, button) {
+            try {
+                await navigator.clipboard.writeText(text);
+                const originalText = button.textContent;
+                button.textContent = '✓ Copied';
+                button.classList.add('copied');
+
+                setTimeout(() => {
+                    button.textContent = originalText;
+                    button.classList.remove('copied');
+                }, 2000);
+            } catch (err) {
+                showToast('Failed to copy');
+            }
+        }
+
+        function formatCurrency(amount) {
+            return new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: 'USD'
+            }).format(amount);
+        }
+
+        function adjustSplitToFull(index) {
+            const totalPercent = splits.reduce((sum, s) => sum + (parseFloat(s.percent) || 0), 0);
+            const remaining = 100 - totalPercent;
+
+            if (remaining > 0 && splits[index]) {
+                // Add the remaining percentage to this split
+                splits[index].percent = parseFloat(splits[index].percent) + remaining;
+
+                // Update the input field
+                const splitRow = splitsContainer.children[index];
+                if (splitRow) {
+                    const percentInput = splitRow.querySelector('input[type="number"]');
+                    if (percentInput) {
+                        percentInput.value = splits[index].percent.toFixed(1);
+                    }
+                }
+
+                calculateSplits();
+                showToast(`Adjusted to 100%`);
+            }
+        }
+
+        function calculateSplits() {
+            const validatedAmount = validateAndSanitizeAmount(totalInput.value);
+
+            // Handle invalid input (scientific notation)
+            if (validatedAmount === null) {
+                showToast('Invalid number format');
+                resultSection.style.display = 'none';
+                return;
+            }
+
+            const total = validatedAmount;
+
+            // Cap the input value if it exceeds max (check absolute value)
+            if (Math.abs(parseFloat(totalInput.value)) > MAX_AMOUNT) {
+                totalInput.value = parseFloat(totalInput.value) > 0 ? MAX_AMOUNT : -MAX_AMOUNT;
+            }
+
+            if (total === 0 || splits.length === 0) {
+                resultSection.style.display = 'none';
+                return;
+            }
+
+            resultSection.style.display = 'block';
+            resultRows.innerHTML = '';
+
+            // Use integer math (cents) for precision
+            const totalCents = Math.round(total * 100);
+            let runningTotalCents = 0;
+            const results = [];
+
+            // Calculate each split amount based on percentage using cents
+            // Last split absorbs rounding difference to ensure exact total match
+            const totalPercent = splits.reduce((sum, s) => sum + (parseFloat(s.percent) || 0), 0);
+            const isFullSplit = Math.abs(totalPercent - 100) < 0.01;
+
+            splits.forEach((split, index) => {
+                const percent = parseFloat(split.percent) || 0;
+                let amountCents;
+
+                // If this is the last split AND percentages add to 100%,
+                // use remainder to ensure exact match
+                if (isFullSplit && index === splits.length - 1) {
+                    amountCents = totalCents - runningTotalCents;
+                } else {
+                    amountCents = Math.round(totalCents * percent / 100);
+                }
+
+                runningTotalCents += amountCents;
+                const amount = amountCents / 100;
+                results.push({ name: split.name || `Split ${index + 1}`, percent, amount });
+            });
+
+            // Check if adjust button is needed (percentages don't add to 100)
+            const needsAdjust = totalPercent < 99.99;
+
+            // Display results
+            results.forEach((result, index) => {
+                const row = document.createElement('div');
+                row.className = 'result-row';
+
+                const labelGroup = document.createElement('div');
+                labelGroup.className = 'result-label-group';
+
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'result-label';
+                nameSpan.textContent = result.name;
+
+                const percentSpan = document.createElement('span');
+                percentSpan.className = 'result-percent';
+                percentSpan.textContent = `${result.percent}%`;
+
+                labelGroup.appendChild(nameSpan);
+                labelGroup.appendChild(percentSpan);
+
+                const amountContainer = document.createElement('div');
+                amountContainer.className = 'result-amount-container';
+
+                // Add adjust button if percentages don't add to 100
+                if (needsAdjust) {
+                    const adjustBtn = document.createElement('button');
+                    adjustBtn.className = 'adjust-btn';
+                    adjustBtn.textContent = 'Adjust';
+                    adjustBtn.setAttribute('aria-label', `Adjust ${result.name} to absorb remainder`);
+                    adjustBtn.addEventListener('click', () => {
+                        adjustSplitToFull(index);
+                    });
+                    amountContainer.appendChild(adjustBtn);
+                }
+
+                const amountSpan = document.createElement('span');
+                amountSpan.className = 'result-amount';
+                amountSpan.textContent = formatCurrency(result.amount);
+
+                const copyBtn = document.createElement('button');
+                copyBtn.className = 'copy-btn';
+                copyBtn.textContent = 'Copy';
+                copyBtn.setAttribute('aria-label', `Copy ${formatCurrency(result.amount)}`);
+                copyBtn.addEventListener('click', () => {
+                    copyToClipboard(result.amount.toFixed(2), copyBtn);
+                });
+
+                amountContainer.appendChild(amountSpan);
+                amountContainer.appendChild(copyBtn);
+
+                row.appendChild(labelGroup);
+                row.appendChild(amountContainer);
+                resultRows.appendChild(row);
+            });
+
+            // Calculate remaining percent (totalPercent already calculated above)
+            const remainingPercent = 100 - totalPercent;
+            const remainingCents = totalCents - runningTotalCents;
+            const remainingAmount = remainingCents / 100;
+
+            // Add remainder row if there's unallocated amount
+            if (remainingPercent > 0.01) {
+                const remainderRow = document.createElement('div');
+                remainderRow.className = 'result-row remainder-row';
+
+                const labelGroup = document.createElement('div');
+                labelGroup.className = 'result-label-group';
+
+                const nameSpan = document.createElement('span');
+                nameSpan.className = 'result-label';
+                nameSpan.textContent = 'Remainder';
+
+                const percentSpan = document.createElement('span');
+                percentSpan.className = 'result-percent';
+                percentSpan.textContent = `${remainingPercent.toFixed(1)}%`;
+
+                labelGroup.appendChild(nameSpan);
+                labelGroup.appendChild(percentSpan);
+
+                const amountContainer = document.createElement('div');
+                amountContainer.className = 'result-amount-container';
+
+                const amountSpan = document.createElement('span');
+                amountSpan.className = 'result-amount';
+                amountSpan.textContent = formatCurrency(remainingAmount);
+
+                const copyBtn = document.createElement('button');
+                copyBtn.className = 'copy-btn';
+                copyBtn.textContent = 'Copy';
+                copyBtn.setAttribute('aria-label', `Copy ${formatCurrency(remainingAmount)}`);
+                copyBtn.addEventListener('click', () => {
+                    copyToClipboard(remainingAmount.toFixed(2), copyBtn);
+                });
+
+                amountContainer.appendChild(amountSpan);
+                amountContainer.appendChild(copyBtn);
+
+                remainderRow.appendChild(labelGroup);
+                remainderRow.appendChild(amountContainer);
+                resultRows.appendChild(remainderRow);
+
+                // Update running total to include remainder
+                runningTotalCents += remainingCents;
+            }
+
+            resultTotal.textContent = formatCurrency(runningTotalCents / 100);
+
+            // Status indicator - using safe DOM methods
+            while (statusIndicator.firstChild) {
+                statusIndicator.removeChild(statusIndicator.firstChild);
+            }
+            if (Math.abs(totalPercent - 100) < 0.01) {
+                statusIndicator.className = 'status-indicator status-matched';
+                statusIndicator.appendChild(createSvgIcon('checkmark'));
+                statusIndicator.appendChild(document.createTextNode(' 100%'));
+            } else if (totalPercent < 100) {
+                statusIndicator.className = 'status-indicator status-matched';
+                statusIndicator.appendChild(createSvgIcon('checkmark'));
+                statusIndicator.appendChild(document.createTextNode(' 100%'));
+            } else {
+                statusIndicator.className = 'status-indicator status-warning';
+                statusIndicator.appendChild(createSvgIcon('warning'));
+                statusIndicator.appendChild(document.createTextNode(' ' + totalPercent.toFixed(1) + '%'));
+            }
+        }
+
+        function createCategorySelect(selectedValue = '') {
+            const select = document.createElement('select');
+            select.setAttribute('aria-label', 'Split category');
+
+            // Add default empty option
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = 'Select category...';
+            select.appendChild(defaultOption);
+
+            // Add grouped options
+            CATEGORY_OPTIONS.forEach(group => {
+                const optgroup = document.createElement('optgroup');
+                optgroup.label = group.group;
+
+                group.options.forEach(optionText => {
+                    const option = document.createElement('option');
+                    option.value = optionText;
+                    option.textContent = optionText;
+                    if (optionText === selectedValue) {
+                        option.selected = true;
+                    }
+                    optgroup.appendChild(option);
+                });
+
+                select.appendChild(optgroup);
+            });
+
+            return select;
+        }
+
+        function applyQuickSplit(percentages) {
+            // Clear existing splits
+            splits.length = 0;
+            while (splitsContainer.firstChild) {
+                splitsContainer.removeChild(splitsContainer.firstChild);
+            }
+
+            // Add new splits with specified percentages
+            percentages.forEach(percent => {
+                addSplit(percent, '');
+            });
+
+            showToast(`Applied ${percentages.join('/')} split`);
+        }
+
+        function swapSplits() {
+            if (splits.length < 2) {
+                showToast('Need at least 2 splits to swap');
+                return;
+            }
+
+            // Reverse the splits array
+            splits.reverse();
+
+            // Re-render the split inputs
+            while (splitsContainer.firstChild) {
+                splitsContainer.removeChild(splitsContainer.firstChild);
+            }
+            splits.forEach((split, index) => {
+                const row = document.createElement('div');
+                row.className = 'split-item';
+                row.dataset.id = split.id;
+
+                const categorySelect = createCategorySelect(split.name);
+                categorySelect.addEventListener('change', (e) => {
+                    split.name = e.target.value;
+                    calculateSplits();
+                });
+
+                const categoryCopyBtn = document.createElement('button');
+                categoryCopyBtn.className = 'category-copy-btn';
+                categoryCopyBtn.title = 'Copy category name';
+                categoryCopyBtn.setAttribute('aria-label', 'Copy category name');
+                const copyIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                copyIcon.setAttribute('width', '14');
+                copyIcon.setAttribute('height', '14');
+                copyIcon.setAttribute('fill', 'none');
+                copyIcon.setAttribute('viewBox', '0 0 24 24');
+                copyIcon.setAttribute('stroke', 'currentColor');
+                const copyPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                copyPath.setAttribute('stroke-linecap', 'round');
+                copyPath.setAttribute('stroke-linejoin', 'round');
+                copyPath.setAttribute('stroke-width', '2');
+                copyPath.setAttribute('d', 'M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z');
+                copyIcon.appendChild(copyPath);
+                categoryCopyBtn.appendChild(copyIcon);
+                categoryCopyBtn.addEventListener('click', () => {
+                    if (categorySelect.value) {
+                        copyToClipboard(categorySelect.value, categoryCopyBtn);
+                    } else {
+                        showToast('Select a category first');
+                    }
+                });
+
+                const percentInput = document.createElement('input');
+                percentInput.type = 'number';
+                percentInput.placeholder = '%';
+                percentInput.value = split.percent;
+                percentInput.min = '0';
+                percentInput.max = '100';
+                percentInput.step = '0.1';
+                percentInput.setAttribute('aria-label', 'Split percentage');
+                percentInput.addEventListener('input', (e) => {
+                    split.percent = parseFloat(e.target.value) || 0;
+                    calculateSplits();
+                });
+
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'btn btn-danger';
+                deleteBtn.appendChild(createSvgIcon('delete', 18, 18));
+                deleteBtn.setAttribute('aria-label', 'Delete split');
+                deleteBtn.addEventListener('click', () => {
+                    const idx = splits.findIndex(s => s.id === split.id);
+                    if (idx > -1) splits.splice(idx, 1);
+                    row.remove();
+                    calculateSplits();
+                });
+
+                row.appendChild(categorySelect);
+                row.appendChild(categoryCopyBtn);
+                row.appendChild(percentInput);
+                row.appendChild(deleteBtn);
+                splitsContainer.appendChild(row);
+            });
+
+            calculateSplits();
+            showToast('Splits swapped');
+        }
+
+        function addSplit(defaultPercent = 50, defaultName = '') {
+            const id = splitId++;
+            const split = { id, name: defaultName, percent: defaultPercent };
+            splits.push(split);
+
+            const row = document.createElement('div');
+            row.className = 'split-item';
+            row.dataset.id = id;
+
+            const categorySelect = createCategorySelect(defaultName);
+            categorySelect.addEventListener('change', (e) => {
+                split.name = e.target.value;
+                calculateSplits();
+            });
+
+            const categoryCopyBtn = document.createElement('button');
+            categoryCopyBtn.className = 'category-copy-btn';
+            categoryCopyBtn.title = 'Copy category name';
+            categoryCopyBtn.setAttribute('aria-label', 'Copy category name');
+            const copyIcon = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            copyIcon.setAttribute('width', '14');
+            copyIcon.setAttribute('height', '14');
+            copyIcon.setAttribute('fill', 'none');
+            copyIcon.setAttribute('viewBox', '0 0 24 24');
+            copyIcon.setAttribute('stroke', 'currentColor');
+            const copyPath = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+            copyPath.setAttribute('stroke-linecap', 'round');
+            copyPath.setAttribute('stroke-linejoin', 'round');
+            copyPath.setAttribute('stroke-width', '2');
+            copyPath.setAttribute('d', 'M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z');
+            copyIcon.appendChild(copyPath);
+            categoryCopyBtn.appendChild(copyIcon);
+            categoryCopyBtn.addEventListener('click', () => {
+                if (categorySelect.value) {
+                    copyToClipboard(categorySelect.value, categoryCopyBtn);
+                } else {
+                    showToast('Select a category first');
+                }
+            });
+
+            const percentInput = document.createElement('input');
+            percentInput.type = 'number';
+            percentInput.placeholder = '%';
+            percentInput.value = defaultPercent;
+            percentInput.min = '0';
+            percentInput.max = '100';
+            percentInput.step = '0.1';
+            percentInput.setAttribute('aria-label', 'Split percentage');
+            percentInput.addEventListener('input', (e) => {
+                split.percent = parseFloat(e.target.value) || 0;
+                calculateSplits();
+            });
+
+            const deleteBtn = document.createElement('button');
+            deleteBtn.className = 'btn btn-danger';
+            deleteBtn.appendChild(createSvgIcon('delete', 18, 18));
+            deleteBtn.setAttribute('aria-label', 'Delete split');
+            deleteBtn.addEventListener('click', () => {
+                const index = splits.findIndex(s => s.id === id);
+                if (index > -1) splits.splice(index, 1);
+                row.remove();
+                calculateSplits();
+            });
+
+            row.appendChild(categorySelect);
+            row.appendChild(categoryCopyBtn);
+            row.appendChild(percentInput);
+            row.appendChild(deleteBtn);
+            splitsContainer.appendChild(row);
+
+            if (!defaultName) {
+                categorySelect.focus();
+            }
+            calculateSplits();
+        }
+
+        // Event listeners
+        const swapSplitsBtn = document.getElementById('swapSplitsBtn');
+
+        // Prevent scientific notation in total amount input
+        totalInput.addEventListener('keydown', (e) => {
+            if (e.key === 'e' || e.key === 'E') {
+                e.preventDefault();
+            }
+        });
+        totalInput.addEventListener('input', calculateSplits);
+        addSplitBtn.addEventListener('click', () => addSplit(50, ''));
+        swapSplitsBtn.addEventListener('click', swapSplits);
+        savePresetBtn.addEventListener('click', showPresetModal);
+        cancelPresetBtn.addEventListener('click', hidePresetModal);
+        confirmPresetBtn.addEventListener('click', saveCurrentPreset);
+
+        presetNameInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                saveCurrentPreset();
+            } else if (e.key === 'Escape') {
+                hidePresetModal();
+            }
+        });
+
+        presetModal.addEventListener('click', (e) => {
+            if (e.target === presetModal) {
+                hidePresetModal();
+            }
+        });
+
+        // Keyboard accessibility
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && presetModal.classList.contains('show')) {
+                hidePresetModal();
+            }
+        });
+
+        // Theme toggle
+        const themeToggle = document.getElementById('themeToggle');
+        const THEME_KEY = 'ynab-splitter-theme';
+
+        function loadTheme() {
+            const savedTheme = localStorage.getItem(THEME_KEY);
+            if (savedTheme) {
+                document.documentElement.setAttribute('data-theme', savedTheme);
+            }
+        }
+
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-theme');
+            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+
+            if (newTheme === 'dark') {
+                document.documentElement.removeAttribute('data-theme');
+            } else {
+                document.documentElement.setAttribute('data-theme', newTheme);
+            }
+
+            localStorage.setItem(THEME_KEY, newTheme);
+        }
+
+        themeToggle.addEventListener('click', toggleTheme);
+
+        // ============================================
+        // AUTH EVENT LISTENERS
+        // ============================================
+        signInBtn.addEventListener('click', showAuthModal);
+        signOutBtn.addEventListener('click', signOut);
+        cancelAuthBtn.addEventListener('click', hideAuthModal);
+
+        signInTab.addEventListener('click', () => setAuthMode(false));
+        signUpTab.addEventListener('click', () => setAuthMode(true));
+
+        confirmAuthBtn.addEventListener('click', () => {
+            const email = authEmail.value.trim();
+            const password = authPassword.value;
+            if (!email || !password) {
+                showAuthError('Please enter email and password');
+                return;
+            }
+            if (password.length < 6) {
+                showAuthError('Password must be at least 6 characters');
+                return;
+            }
+            if (isSignUpMode) {
+                signUp(email, password);
+            } else {
+                signIn(email, password);
+            }
+        });
+
+        authEmail.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                authPassword.focus();
+            } else if (e.key === 'Escape') {
+                hideAuthModal();
+            }
+        });
+
+        authPassword.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                confirmAuthBtn.click();
+            } else if (e.key === 'Escape') {
+                hideAuthModal();
+            }
+        });
+
+        authModal.addEventListener('click', (e) => {
+            if (e.target === authModal) {
+                hideAuthModal();
+            }
+        });
+
+        // ============================================
+        // CUSTOM CATEGORIES EVENT LISTENERS
+        // ============================================
+        const newCategoryInput = document.getElementById('newCategoryInput');
+        const addCategoryBtn = document.getElementById('addCategoryBtn');
+
+        addCategoryBtn.addEventListener('click', () => {
+            addCustomCategory(newCategoryInput.value);
+            newCategoryInput.value = '';
+        });
+
+        newCategoryInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') {
+                addCustomCategory(newCategoryInput.value);
+                newCategoryInput.value = '';
+            }
+        });
+
+        // ============================================
+        // INITIALIZE
+        // ============================================
+        loadTheme();
+        loadLocalCategories();
+        renderPresets();
+        renderCustomCategories();
+
+        // Check for existing auth session
+        checkAuth();
+
+        // Start with two 50% splits
+        addSplit(50, '');
+        addSplit(50, '');
+    </script>
+    <script src='https://storage.ko-fi.com/cdn/scripts/overlay-widget.js'></script>
+    <script>
+      kofiWidgetOverlay.draw('keenkadeskaggs', {
+        'type': 'floating-chat',
+        'floating-chat.donateButton.text': 'Support me',
+        'floating-chat.donateButton.background-color': '#794bc4',
+        'floating-chat.donateButton.text-color': '#fff'
+      });
+    </script>
+</body>
+</html>
