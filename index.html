@@ -470,6 +470,7 @@
                 <h4>Third-Party Services</h4>
                 <ul>
                     <li><strong>Supabase:</strong> Used for authentication and data storage</li>
+                    <li><strong>Ko-fi:</strong> Optional donation platform (does not collect or store app data)</li>
                 </ul>
 
                 <h4>Contact</h4>
@@ -599,5 +600,14 @@
     </div>
 
     <script src="app.js"></script>
+    <script src='https://storage.ko-fi.com/cdn/scripts/overlay-widget.js'></script>
+    <script>
+      kofiWidgetOverlay.draw('keenkadeskaggs', {
+        'type': 'floating-chat',
+        'floating-chat.donateButton.text': 'Support me',
+        'floating-chat.donateButton.background-color': '#794bc4',
+        'floating-chat.donateButton.text-color': '#fff'
+      });
+    </script>
 </body>
 </html>
