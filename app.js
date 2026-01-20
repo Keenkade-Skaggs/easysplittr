@@ -172,6 +172,10 @@ function showAuthModal() {
 
 function hideAuthModal() {
     authModal.classList.remove('show');
+    // Reset to sign-in mode when closing
+    setAuthMode(false);
+    authEmail.value = '';
+    authPassword.value = '';
 }
 
 function showAuthError(message) {
@@ -186,11 +190,22 @@ function showAuthSuccess(message) {
     authError.classList.remove('show');
 }
 
+let isForgotPasswordMode = false;
+
 function setAuthMode(signUp) {
     isSignUpMode = signUp;
+    isForgotPasswordMode = false;
     const authModalTitle = document.getElementById('authModalTitle');
     const authModalSubtitle = document.getElementById('authModalSubtitle');
     const btnText = confirmAuthBtn.querySelector('span');
+    const passwordGroup = document.getElementById('passwordGroup');
+    const authTabs = document.querySelector('.auth-tabs');
+    const forgotLink = document.getElementById('forgotPasswordLink');
+
+    // Show password field and tabs
+    if (passwordGroup) passwordGroup.style.display = 'block';
+    if (authTabs) authTabs.style.display = 'flex';
+    if (forgotLink) forgotLink.style.display = 'inline-block';
 
     if (signUp) {
         signUpTab.classList.add('active');
@@ -198,6 +213,7 @@ function setAuthMode(signUp) {
         if (btnText) btnText.textContent = 'Create Account';
         if (authModalTitle) authModalTitle.textContent = 'Create Account';
         if (authModalSubtitle) authModalSubtitle.textContent = 'Sign up to sync your presets across devices';
+        if (forgotLink) forgotLink.style.display = 'none';
     } else {
         signInTab.classList.add('active');
         signUpTab.classList.remove('active');
@@ -207,6 +223,49 @@ function setAuthMode(signUp) {
     }
     authError.classList.remove('show');
     authSuccess.classList.remove('show');
+}
+
+function setForgotPasswordMode() {
+    isForgotPasswordMode = true;
+    isSignUpMode = false;
+    const authModalTitle = document.getElementById('authModalTitle');
+    const authModalSubtitle = document.getElementById('authModalSubtitle');
+    const btnText = confirmAuthBtn.querySelector('span');
+    const passwordGroup = document.getElementById('passwordGroup');
+    const authTabs = document.querySelector('.auth-tabs');
+
+    // Hide password field and tabs
+    if (passwordGroup) passwordGroup.style.display = 'none';
+    if (authTabs) authTabs.style.display = 'none';
+
+    if (authModalTitle) authModalTitle.textContent = 'Reset Password';
+    if (authModalSubtitle) authModalSubtitle.textContent = 'Enter your email and we\'ll send you a reset link';
+    if (btnText) btnText.textContent = 'Send Reset Link';
+
+    authError.classList.remove('show');
+    authSuccess.classList.remove('show');
+}
+
+async function resetPassword(email) {
+    try {
+        const { error } = await supabaseClient.auth.resetPasswordForEmail(email, {
+            redirectTo: window.location.origin + window.location.pathname
+        });
+
+        if (error) throw error;
+
+        authSuccess.textContent = 'Password reset email sent! Check your inbox.';
+        authSuccess.classList.add('show');
+        authError.classList.remove('show');
+
+        // Reset to sign in mode after 3 seconds
+        setTimeout(() => {
+            setAuthMode(false);
+        }, 3000);
+
+    } catch (error) {
+        showAuthError(error.message);
+    }
 }
 
 function showSyncStatus(status) {
@@ -1387,8 +1446,28 @@ cancelAuthBtn.addEventListener('click', hideAuthModal);
 signInTab.addEventListener('click', () => setAuthMode(false));
 signUpTab.addEventListener('click', () => setAuthMode(true));
 
+// Forgot password link
+const forgotPasswordLink = document.getElementById('forgotPasswordLink');
+if (forgotPasswordLink) {
+    forgotPasswordLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        setForgotPasswordMode();
+    });
+}
+
 confirmAuthBtn.addEventListener('click', () => {
     const email = authEmail.value.trim();
+
+    // Handle forgot password mode
+    if (isForgotPasswordMode) {
+        if (!email) {
+            showAuthError('Please enter your email address');
+            return;
+        }
+        resetPassword(email);
+        return;
+    }
+
     const password = authPassword.value;
     if (!email || !password) {
         showAuthError('Please enter email and password');
@@ -1407,7 +1486,11 @@ confirmAuthBtn.addEventListener('click', () => {
 
 authEmail.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
-        authPassword.focus();
+        if (isForgotPasswordMode) {
+            confirmAuthBtn.click();
+        } else {
+            authPassword.focus();
+        }
     } else if (e.key === 'Escape') {
         hideAuthModal();
     }
