@@ -6,6 +6,7 @@ const SUPABASE_ANON_KEY = 'sb_publishable_EfFJ4AO1Ts__Nd6S6qR0Ag_8Yvu1bYb';
 const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let currentUser = null;
 let customCategories = []; // User's custom categories from Supabase
+let hiddenDefaults = []; // Hidden default category names
 
 // ============================================
 // ORIGINAL APP STATE
@@ -14,6 +15,7 @@ let splitId = 0;
 const splits = [];
 const STORAGE_KEY = 'ynab-splitter-presets';
 const CATEGORIES_STORAGE_KEY = 'ynab-splitter-categories';
+const HIDDEN_DEFAULTS_KEY = 'ynab-splitter-hidden-defaults';
 const SPLIT_MODE_KEY = 'ynab-splitter-mode';
 const DECIMAL_KEY = 'ynab-splitter-decimals';
 
@@ -515,8 +517,11 @@ async function deleteCategoryFromCloud(categoryId) {
 }
 
 function updateCategoryOptions() {
-    // Start with default categories
-    CATEGORY_OPTIONS = [...DEFAULT_CATEGORY_OPTIONS];
+    // Start with default categories, filtering out hidden ones
+    CATEGORY_OPTIONS = DEFAULT_CATEGORY_OPTIONS.map(group => ({
+        group: group.group,
+        options: group.options.filter(opt => !hiddenDefaults.includes(opt))
+    })).filter(group => group.options.length > 0);
 
     // Add custom categories if any
     if (customCategories.length > 0) {
@@ -607,6 +612,102 @@ async function deleteCustomCategory(index) {
     updateCategoryOptions();
     renderCustomCategories();
     showToast(`Deleted category: ${category.name}`);
+}
+
+function loadHiddenDefaults() {
+    try {
+        const stored = localStorage.getItem(HIDDEN_DEFAULTS_KEY);
+        if (stored) {
+            hiddenDefaults = JSON.parse(stored);
+        }
+    } catch (e) {
+        hiddenDefaults = [];
+    }
+}
+
+function hideDefaultCategory(categoryName) {
+    if (hiddenDefaults.includes(categoryName)) return;
+
+    hiddenDefaults.push(categoryName);
+    localStorage.setItem(HIDDEN_DEFAULTS_KEY, JSON.stringify(hiddenDefaults));
+    updateCategoryOptions();
+    renderDefaultCategories();
+    showToast(`Hidden category: ${categoryName}`);
+}
+
+function restoreDefaultCategory(categoryName) {
+    const index = hiddenDefaults.indexOf(categoryName);
+    if (index === -1) return;
+
+    hiddenDefaults.splice(index, 1);
+    localStorage.setItem(HIDDEN_DEFAULTS_KEY, JSON.stringify(hiddenDefaults));
+    updateCategoryOptions();
+    renderDefaultCategories();
+    showToast(`Restored category: ${categoryName}`);
+}
+
+function createCategoryIcon(isRestore) {
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+    svg.setAttribute('width', '14');
+    svg.setAttribute('height', '14');
+    svg.setAttribute('fill', 'none');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('stroke', 'currentColor');
+
+    const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+    path.setAttribute('stroke-linecap', 'round');
+    path.setAttribute('stroke-linejoin', 'round');
+    path.setAttribute('stroke-width', '2');
+
+    if (isRestore) {
+        path.setAttribute('d', 'M12 6v6m0 0v6m0-6h6m-6 0H6');
+    } else {
+        path.setAttribute('d', 'M6 18L18 6M6 6l12 12');
+    }
+
+    svg.appendChild(path);
+    return svg;
+}
+
+function renderDefaultCategories() {
+    const container = document.getElementById('defaultCategoryList');
+    if (!container) return;
+
+    // Clear existing content
+    while (container.firstChild) {
+        container.removeChild(container.firstChild);
+    }
+
+    // Get all default categories
+    const allDefaults = DEFAULT_CATEGORY_OPTIONS.flatMap(g =>
+        g.options.map(opt => ({ name: opt, group: g.group }))
+    );
+
+    allDefaults.forEach(category => {
+        const isHidden = hiddenDefaults.includes(category.name);
+
+        const chip = document.createElement('div');
+        chip.className = 'default-category-chip' + (isHidden ? ' hidden-category' : '');
+
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = category.name;
+        chip.appendChild(nameSpan);
+
+        const btn = document.createElement('button');
+        btn.className = 'category-toggle-btn';
+        btn.setAttribute('aria-label', isHidden ? 'Restore category' : 'Hide category');
+        btn.title = isHidden ? 'Restore' : 'Hide';
+        btn.appendChild(createCategoryIcon(isHidden));
+
+        if (isHidden) {
+            btn.addEventListener('click', () => restoreDefaultCategory(category.name));
+        } else {
+            btn.addEventListener('click', () => hideDefaultCategory(category.name));
+        }
+
+        chip.appendChild(btn);
+        container.appendChild(chip);
+    });
 }
 
 function renderCustomCategories() {
@@ -1958,8 +2059,11 @@ themeToggle.addEventListener('click', toggleThemeWithPreference);
 // ============================================
 initTheme(); // Use new theme initialization
 loadLocalCategories();
+loadHiddenDefaults();
+updateCategoryOptions(); // Refresh after loading hidden defaults
 renderPresets();
 renderCustomCategories();
+renderDefaultCategories();
 
 // Listen for auth state changes (including password recovery)
 supabaseClient.auth.onAuthStateChange((event, session) => {

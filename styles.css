@@ -1562,6 +1562,77 @@ footer a:hover {
     font-style: italic;
 }
 
+/* Default Categories */
+.default-categories-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 16px;
+    margin-bottom: 10px;
+}
+
+.default-categories-header h4 {
+    margin: 0;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.default-categories-hint {
+    font-size: 0.7rem;
+    color: var(--text-tertiary);
+    font-style: italic;
+}
+
+.default-category-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.default-category-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    background: rgba(100, 116, 139, 0.1);
+    border: 1px solid rgba(100, 116, 139, 0.2);
+    border-radius: 12px;
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    transition: all 0.2s;
+}
+
+.default-category-chip.hidden-category {
+    background: rgba(239, 68, 68, 0.1);
+    border-color: rgba(239, 68, 68, 0.2);
+    color: var(--text-tertiary);
+    text-decoration: line-through;
+    opacity: 0.7;
+}
+
+.category-toggle-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 14px;
+    height: 14px;
+    background: transparent;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    padding: 0;
+    transition: color 0.2s;
+}
+
+.default-category-chip:not(.hidden-category) .category-toggle-btn:hover {
+    color: var(--danger);
+}
+
+.default-category-chip.hidden-category .category-toggle-btn:hover {
+    color: var(--success);
+}
+
 /* Settings Row */
 .settings-row {
     display: flex;
