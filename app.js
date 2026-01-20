@@ -1793,6 +1793,46 @@ if (privacyModal) {
 }
 
 // ============================================
+// CATEGORY SETTINGS MODAL
+// ============================================
+const categorySettingsModal = document.getElementById('categorySettingsModal');
+const categorySettingsBtn = document.getElementById('categorySettingsBtn');
+const closeCategorySettingsBtn = document.getElementById('closeCategorySettingsBtn');
+const doneCategorySettingsBtn = document.getElementById('doneCategorySettingsBtn');
+
+function showCategorySettings() {
+    if (categorySettingsModal) {
+        categorySettingsModal.classList.add('show');
+    }
+}
+
+function hideCategorySettings() {
+    if (categorySettingsModal) {
+        categorySettingsModal.classList.remove('show');
+    }
+}
+
+if (categorySettingsBtn) {
+    categorySettingsBtn.addEventListener('click', showCategorySettings);
+}
+
+if (closeCategorySettingsBtn) {
+    closeCategorySettingsBtn.addEventListener('click', hideCategorySettings);
+}
+
+if (doneCategorySettingsBtn) {
+    doneCategorySettingsBtn.addEventListener('click', hideCategorySettings);
+}
+
+if (categorySettingsModal) {
+    categorySettingsModal.addEventListener('click', (e) => {
+        if (e.target === categorySettingsModal) {
+            hideCategorySettings();
+        }
+    });
+}
+
+// ============================================
 // SETTINGS: SPLIT MODE & DECIMAL PRECISION
 // ============================================
 const splitModeToggle = document.getElementById('splitModeToggle');
@@ -1933,6 +1973,34 @@ if (splitsHeaderTitle) {
 }
 
 // ============================================
+// KEYBOARD HINTS TOGGLE
+// ============================================
+const KEYBOARD_HINTS_KEY = 'ynab-splitter-keyboard-hints';
+const keyboardHint = document.getElementById('keyboardHint');
+const keyboardHintClose = document.getElementById('keyboardHintClose');
+
+function loadKeyboardHintsPreference() {
+    const hidden = localStorage.getItem(KEYBOARD_HINTS_KEY) === 'hidden';
+    if (hidden && keyboardHint) {
+        keyboardHint.classList.add('hidden');
+    }
+}
+
+function hideKeyboardHints() {
+    if (keyboardHint) {
+        keyboardHint.classList.add('hidden');
+        localStorage.setItem(KEYBOARD_HINTS_KEY, 'hidden');
+    }
+}
+
+if (keyboardHintClose) {
+    keyboardHintClose.addEventListener('click', hideKeyboardHints);
+}
+
+// Load preference on startup
+loadKeyboardHintsPreference();
+
+// ============================================
 // KEYBOARD SHORTCUTS
 // ============================================
 document.addEventListener('keydown', (e) => {
@@ -1950,6 +2018,8 @@ document.addEventListener('keydown', (e) => {
             hideGuideModal();
         } else if (privacyModal && privacyModal.classList.contains('show')) {
             hidePrivacyModal();
+        } else if (categorySettingsModal && categorySettingsModal.classList.contains('show')) {
+            hideCategorySettings();
         }
         return;
     }

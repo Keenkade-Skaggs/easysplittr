@@ -124,16 +124,13 @@
                         </svg>
                         Add
                     </button>
+                    <button class="btn btn-secondary category-settings-btn" id="categorySettingsBtn" title="Category Settings" aria-label="Category Settings">
+                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        </svg>
+                    </button>
                 </div>
-                <div class="custom-category-list" id="customCategoryList">
-                    <span class="empty-categories">No custom categories yet</span>
-                </div>
-
-                <div class="default-categories-header">
-                    <h4>Default Categories</h4>
-                    <span class="default-categories-hint">Click to hide/show</span>
-                </div>
-                <div class="default-category-list" id="defaultCategoryList"></div>
             </div>
 
             <div class="quick-split-section">
@@ -399,6 +396,39 @@
         </div>
     </div>
 
+    <!-- Category Settings Modal -->
+    <div class="modal-overlay" id="categorySettingsModal">
+        <div class="modal category-settings-modal">
+            <div class="category-settings-header">
+                <h3>Category Settings</h3>
+                <button class="modal-close-btn" id="closeCategorySettingsBtn" aria-label="Close">
+                    <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="category-settings-content">
+                <div class="category-settings-section">
+                    <h4>Your Custom Categories</h4>
+                    <div class="custom-category-list" id="customCategoryList">
+                        <span class="empty-categories">No custom categories yet</span>
+                    </div>
+                </div>
+
+                <div class="category-settings-section">
+                    <div class="default-categories-header">
+                        <h4>Default Categories</h4>
+                        <span class="default-categories-hint">Click to hide/show</span>
+                    </div>
+                    <div class="default-category-list" id="defaultCategoryList"></div>
+                </div>
+            </div>
+            <div class="category-settings-footer">
+                <button class="btn btn-primary" id="doneCategorySettingsBtn">Done</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Privacy Policy Modal -->
     <div class="modal-overlay" id="privacyModal">
         <div class="modal privacy-modal">
@@ -559,7 +589,14 @@
     </div>
 
     <div class="keyboard-hint" id="keyboardHint">
-        <kbd>?</kbd> Help &nbsp;&bull;&nbsp; <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> Quick splits &nbsp;&bull;&nbsp; <kbd>Ctrl+S</kbd> Save preset
+        <span class="keyboard-hint-content">
+            <kbd>?</kbd> Help &nbsp;&bull;&nbsp; <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> Quick splits &nbsp;&bull;&nbsp; <kbd>Ctrl+S</kbd> Save preset
+        </span>
+        <button class="keyboard-hint-close" id="keyboardHintClose" aria-label="Dismiss keyboard hints">
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
     </div>
 
     <script src="app.js"></script>

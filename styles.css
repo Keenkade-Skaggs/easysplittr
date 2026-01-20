@@ -1633,6 +1633,96 @@ footer a:hover {
     color: var(--success);
 }
 
+/* Category Settings Button */
+.category-settings-btn {
+    padding: 8px 12px !important;
+    min-width: auto;
+}
+
+.category-settings-btn svg {
+    flex-shrink: 0;
+}
+
+/* Category Settings Modal */
+.category-settings-modal {
+    max-width: 520px;
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+}
+
+.category-settings-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 20px;
+}
+
+.category-settings-header h3 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: var(--text-primary);
+}
+
+.category-settings-content {
+    flex: 1;
+    overflow-y: auto;
+    padding-right: 8px;
+    margin-right: -8px;
+}
+
+.category-settings-content::-webkit-scrollbar {
+    width: 6px;
+}
+
+.category-settings-content::-webkit-scrollbar-track {
+    background: var(--bg-tertiary);
+    border-radius: 3px;
+}
+
+.category-settings-content::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 3px;
+}
+
+.category-settings-content::-webkit-scrollbar-thumb:hover {
+    background: var(--text-tertiary);
+}
+
+.category-settings-section {
+    margin-bottom: 24px;
+}
+
+.category-settings-section:last-child {
+    margin-bottom: 0;
+}
+
+.category-settings-section h4 {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    margin: 0 0 12px 0;
+}
+
+.category-settings-section .custom-category-list {
+    min-height: 40px;
+}
+
+.category-settings-section .default-categories-header {
+    margin-top: 0;
+    margin-bottom: 12px;
+}
+
+.category-settings-footer {
+    padding-top: 20px;
+    border-top: 1px solid var(--border);
+    margin-top: 20px;
+    display: flex;
+    justify-content: flex-end;
+}
+
 /* Settings Row */
 .settings-row {
     display: flex;
@@ -1742,6 +1832,37 @@ footer a:hover {
     color: var(--text-tertiary);
     box-shadow: var(--shadow-lg);
     z-index: 100;
+    align-items: center;
+    gap: 12px;
+}
+
+.keyboard-hint.hidden {
+    display: none !important;
+}
+
+.keyboard-hint-content {
+    flex: 1;
+}
+
+.keyboard-hint-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    background: transparent;
+    border: none;
+    color: var(--text-tertiary);
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all 0.2s;
+    flex-shrink: 0;
+}
+
+.keyboard-hint-close:hover {
+    background: var(--bg-tertiary);
+    color: var(--text-secondary);
 }
 
 .keyboard-hint kbd {
@@ -1757,8 +1878,8 @@ footer a:hover {
 }
 
 @media (min-width: 768px) {
-    .keyboard-hint {
-        display: block;
+    .keyboard-hint:not(.hidden) {
+        display: flex;
     }
 }
 
